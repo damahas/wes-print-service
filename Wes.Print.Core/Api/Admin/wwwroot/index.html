@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>打印服务 · Wes Print</title>
+  <link rel="stylesheet" href="/admin/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">Wes<span>·</span>Print</div>
+      <div class="sub">打印服务管理</div>
+    </div>
+    <main>
+      <div class="card">
+        <div class="titlebar">
+          <h2>RabbitMQ 消息队列 <span id="mqState" class="dot muted" title=""></span></h2>
+          <label class="switch"><input type="checkbox" id="mqOn" checked><span>启用</span></label>
+        </div>
+        <div id="mqBox">
+          <div class="row3">
+            <div><label>主机 Host</label><input id="host" placeholder="127.0.0.1"></div>
+            <div><label>端口 Port</label><input id="port" type="number" placeholder="5672"></div>
+            <div><label>用户名 UserName</label><input id="user" placeholder="guest"></div>
+            <div><label>密码 Password</label><input id="pass" type="password" placeholder="guest"></div>
+            <div><label>队列 Queue</label><input id="queue" placeholder="wes_print_queue"></div>
+          </div>
+          <div class="mqStatus">
+            <div class="mqInfo"><span id="mqState2" class="dot muted"></span><span id="mqText">未连接</span></div>
+            <button id="mqToggle" class="btn-connect">连接</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>打印机设置</h2>
+        <div class="row">
+          <div style="flex:0 0 320px"><label>默认打印机 Printer</label><select id="printer"></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>打印记录</h2>
+        <div class="row">
+          <select id="channel"><option value="">渠道（全部）</option><option value="Api">Api</option><option value="RabbitMQ">RabbitMQ</option></select>
+          <select id="status"><option value="">状态（全部）</option><option value="Success">Success</option><option value="Failed">Failed</option><option value="Pending">Pending</option></select>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <colgroup>
+              <col style="width:118px">
+              <col style="width:64px"><col style="width:160px"><col style="width:120px"><col style="width:170px"><col style="width:104px"><col><col style="width:84px">
+            </colgroup>
+            <thead><tr><th>渠道</th><th>类型</th><th>模板</th><th>打印机</th><th>时间</th><th>状态</th><th>信息</th><th>操作</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="8" style="color:var(--muted)">加载中…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pager" id="pager"></div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <!-- 打印参数查看弹窗 -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-mask" id="modalMask"></div>
+    <div class="modal-box">
+      <div class="modal-head">
+        <span>打印参数详情</span>
+        <button class="modal-x" id="modalX" title="关闭">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>

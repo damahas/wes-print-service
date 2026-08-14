@@ -1,0 +1,81 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# IDE cache
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# .NET 10 build outputs
+[Bb]in/
+[Oo]bj/
+[Rr]elease/
+[Dd]ebug/
+x64/
+x86/
+
+# Test results
+[Tt]est[Rr]esult*/
+TestResult.xml
+*.trx
+
+# Code coverage
+*.coverage
+*.coveragexml
+
+# NuGet packages
+**/[Pp]ackages/
+*.nupkg
+*.snupkg
+
+# .NET runtime generated
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.pidb
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Local secrets & user config
+appsettings.Development.json
+appsettings.Local.json
+*.local.json
+*.secrets.json
+*.pfx
+*.publishsettings
+
+# Vue 3 / Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Frontend logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend coverage
+coverage/
+*.nyc_output
+
+# Environment files
+.env.local
+.env.*.local
+
+# Generic logs & archives
+*.log
+*.zip
+*.7z
+*~
+*.bak

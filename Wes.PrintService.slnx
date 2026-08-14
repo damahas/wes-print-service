@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Wes.Print.Core/Wes.Print.Core.csproj" />
+  <Project Path="Wes.PrintService/Wes.PrintService.csproj" />
+</Solution>
