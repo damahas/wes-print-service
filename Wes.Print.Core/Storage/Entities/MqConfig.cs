@@ -41,8 +41,5 @@ public class MqConfig
     /// <summary>是否自动确认</summary>
     public bool AutoAck { get; set; } = true;
 
-    /// <summary>所选打印机名称（空表示使用系统默认打印机）</summary>
-    public string? PrinterName { get; set; }
-
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

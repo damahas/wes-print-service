@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Wes.Print.Core.Api.Controllers;
 using Wes.Print.Core.Api.Dtos;
 using Wes.Print.Core.Messaging;
 using Wes.Print.Core.Print;
@@ -50,11 +51,11 @@ public class ExternalApiController : ControllerBase
             Fields = dto.Fields ?? new List<Dictionary<string, string>>(),
         };
 
-        // 打印机从 MQ 配置（前端下拉选择）取，不接收外部传入
-        var mqCfg = await _storage.GetMqConfigAsync("default", ct);
+        // 默认打印机从独立设置（printer.default）取，不接收外部传入
+        var defaultPrinter = await _storage.GetSettingAsync(PrintServiceController.DefaultPrinterKey, ct);
         // 基础校验完成即入队，立即返回 RecordId（状态 Pending），不等打印完成
         var record = await _executor.EnqueueAsync(
-            message, channel: "Api", printerName: mqCfg?.PrinterName, sourceRef: dto.SourceRef, ct: ct);
+            message, channel: "Api", printerName: defaultPrinter, sourceRef: dto.SourceRef, ct: ct);
 
         return Ok(new SubmitPrintJobResultDto
         {

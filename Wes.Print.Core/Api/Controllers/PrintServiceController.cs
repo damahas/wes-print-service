@@ -41,6 +41,31 @@ public class PrintServiceController : ControllerBase
         var def = _printerProvider.DefaultPrinterName;
         return Ok(new { defaultPrinter = def, printers });
     }
+
+    /// <summary>默认打印机 setting 键。空值表示使用系统默认打印机。</summary>
+    public const string DefaultPrinterKey = "printer.default";
+
+    /// <summary>
+    /// 读取默认打印机（与 MQ 配置解耦，独立存储）。
+    /// 返回空字符串表示使用系统默认打印机。
+    /// </summary>
+    [Route("api/printer/default")]
+    [HttpGet]
+    public async Task<IActionResult> GetDefaultPrinter(CancellationToken ct = default)
+    {
+        var v = await _storage.GetSettingAsync(DefaultPrinterKey, ct);
+        return Ok(new { key = DefaultPrinterKey, value = v ?? string.Empty });
+    }
+
+    /// <summary>保存默认打印机（空字符串=恢复系统默认）。</summary>
+    [Route("api/printer/default")]
+    [HttpPost]
+    public async Task<IActionResult> SetDefaultPrinter([FromBody] SettingDto dto, CancellationToken ct = default)
+    {
+        var value = dto.Value ?? string.Empty;
+        await _storage.SetSettingAsync(DefaultPrinterKey, value, ct);
+        return Ok(new { key = DefaultPrinterKey, value });
+    }
     #endregion
 
     #region MQ 配置
@@ -48,8 +73,9 @@ public class PrintServiceController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetMqConfig([FromQuery] string? key, CancellationToken ct)
     {
-        var cfg = await _storage.GetMqConfigAsync(key ?? "default", ct);
-        return Ok(cfg is null ? new MqConfigDto() : ToMqDto(cfg));
+        var k = key ?? MqConnectionManager.RabbitMqKey;
+        var cfg = await _storage.GetMqConfigAsync(k, ct);
+        return Ok(cfg is null ? new MqConfigDto { Key = k } : ToMqDto(cfg));
     }
 
     [Route("api/mq/config")]
@@ -61,7 +87,7 @@ public class PrintServiceController : ControllerBase
 
         var entity = new MqConfig
         {
-            Key = dto.Key ?? "default",
+            Key = dto.Key ?? MqConnectionManager.RabbitMqKey,
             Type = dto.Type,
             Enabled = dto.Enabled,
             Host = dto.Host,
@@ -72,7 +98,6 @@ public class PrintServiceController : ControllerBase
             GroupId = dto.GroupId,
             BootstrapServers = dto.BootstrapServers,
             AutoAck = dto.AutoAck,
-            PrinterName = dto.PrinterName,
         };
         var saved = await _storage.SaveMqConfigAsync(entity, ct);
         return Ok(ToMqDto(saved));
@@ -82,34 +107,42 @@ public class PrintServiceController : ControllerBase
     #region MQ 连接状态 / 控制
     [Route("api/mq/status")]
     [HttpGet]
-    public IActionResult GetMqStatus([FromServices] MqConnectionManager mq)
+    public async Task<IActionResult> GetMqStatus([FromServices] MqConnectionManager mq)
     {
-        var connected = mq.State == MqConnectionState.Connected;
+        var items = await mq.GetAllStatusAsync();
+        // 顶层兼容字段：任一通道已连接/启用即视为 true（供老前端逻辑参考）
+        var anyConnected = System.Array.Exists(items, i => i.Connected);
+        var anyEnabled = System.Array.Exists(items, i => i.Enabled);
         return Ok(new
         {
-            enabled = mq.State != MqConnectionState.Disabled,
-            connected,
-            state = mq.State.ToString(),
-            message = mq.LastMessage ?? string.Empty,
+            enabled = anyEnabled,
+            connected = anyConnected,
+            state = anyConnected ? "Connected" : "Idle",
+            message = string.Empty,
+            items,
         });
     }
 
     [Route("api/mq/connect")]
     [HttpPost]
-    public async Task<IActionResult> MqConnect([FromServices] MqConnectionManager mq)
+    public async Task<IActionResult> MqConnect([FromServices] MqConnectionManager mq, [FromQuery] string? key)
     {
-        var (ok, error) = await mq.ConnectAsync();
+        var k = key ?? MqConnectionManager.RabbitMqKey;
+        var (ok, error) = await mq.ConnectAsync(k);
+        var status = await mq.GetStatusAsync(k);
         return ok
-            ? Ok(new { ok = true, state = mq.State.ToString(), message = mq.LastMessage })
-            : BadRequest(new { ok = false, error });
+            ? Ok(new { ok = true, key = k, state = status.State.ToString(), message = status.Message })
+            : BadRequest(new { ok = false, key = k, error });
     }
 
     [Route("api/mq/disconnect")]
     [HttpPost]
-    public async Task<IActionResult> MqDisconnect([FromServices] MqConnectionManager mq)
+    public async Task<IActionResult> MqDisconnect([FromServices] MqConnectionManager mq, [FromQuery] string? key)
     {
-        await mq.DisconnectAsync();
-        return Ok(new { ok = true, state = mq.State.ToString(), message = mq.LastMessage });
+        var k = key ?? MqConnectionManager.RabbitMqKey;
+        await mq.DisconnectAsync(k);
+        var status = await mq.GetStatusAsync(k);
+        return Ok(new { ok = true, key = k, state = status.State.ToString(), message = status.Message });
     }
     #endregion
 
@@ -189,24 +222,28 @@ public class PrintServiceController : ControllerBase
     }
     #endregion
 
-    #region 通用开关：MQ 启用
+    #region 通用开关：MQ 启用（按通道 key 区分 rabbitmq / kafka）
     [Route("api/settings/mq-enabled")]
     [HttpGet]
-    public async Task<IActionResult> GetMqEnabled(CancellationToken ct = default)
+    public async Task<IActionResult> GetMqEnabled([FromQuery] string? key, CancellationToken ct = default)
     {
-        var v = await _storage.GetSettingAsync("mq.enabled", ct);
-        return Ok(new { key = "mq.enabled", value = v ?? "false" });
+        var k = key ?? MqConnectionManager.RabbitMqKey;
+        var settingKey = $"mq.enabled.{k}";
+        var v = await _storage.GetSettingAsync(settingKey, ct);
+        return Ok(new { key = k, settingKey, value = v ?? "false" });
     }
 
     [Route("api/settings/mq-enabled")]
     [HttpPost]
-    public async Task<IActionResult> SetMqEnabled([FromBody] SettingDto dto, CancellationToken ct = default)
+    public async Task<IActionResult> SetMqEnabled([FromBody] SettingDto dto, [FromQuery] string? key, CancellationToken ct = default)
     {
+        var k = key ?? dto.Key ?? MqConnectionManager.RabbitMqKey;
+        var settingKey = $"mq.enabled.{k}";
         var enabled = dto.Value == "true";
-        await _storage.SetSettingAsync(dto.Key ?? "mq.enabled", dto.Value, ct);
-        // 启用/停用切换时联动连接状态：启用->自动连接（若配置完整），停用->断开
-        await _mq.ApplyEnabledAsync(enabled);
-        return Ok(new { key = dto.Key ?? "mq.enabled", value = dto.Value, enabled });
+        await _storage.SetSettingAsync(settingKey, dto.Value, ct);
+        // 启用/停用切换时联动该通道连接状态：启用->自动连接（若配置完整），停用->断开
+        await _mq.ApplyEnabledAsync(k, enabled);
+        return Ok(new { key = k, settingKey, value = dto.Value, enabled });
     }
     #endregion
 
@@ -260,7 +297,6 @@ public class PrintServiceController : ControllerBase
         GroupId = e.GroupId,
         BootstrapServers = e.BootstrapServers,
         AutoAck = e.AutoAck,
-        PrinterName = e.PrinterName,
     };
 
     private static PrintRecordDto ToRecordDto(PrintRecord e) => new()

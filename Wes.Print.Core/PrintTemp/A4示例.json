@@ -1,12 +1,1 @@
-{
-  "page": { "width": 210, "height": 297, "unit": "mm", "dpi": 300, "background": "#FFFFFF" },
-  "items": [
-    { "type": "text", "x": 20, "y": 20, "w": 170, "h": 14, "text": "出库单", "font": 8, "bold": true, "fontFamily": "Microsoft YaHei", "align": "center" },
-    { "type": "line", "x": 20, "y": 38, "x2": 190, "y2": 38, "width": 0.5, "color": "#000000" },
-    { "type": "text", "x": 20, "y": 45, "w": 170, "h": 8, "text": "单据号：{{taskId}}", "font": 4.5, "fontFamily": "Microsoft YaHei" },
-    { "type": "text", "x": 20, "y": 55, "w": 170, "h": 8, "text": "物料：{{materialName}}", "font": 4.5, "fontFamily": "Microsoft YaHei" },
-    { "type": "text", "x": 20, "y": 65, "w": 170, "h": 8, "text": "数量：{{qty}} {{unit}}", "font": 4.5, "fontFamily": "Microsoft YaHei" },
-    { "type": "barcode", "x": 20, "y": 80, "w": 35, "h": 35, "value": "{{taskId}}", "symbology": "QR" },
-    { "type": "barcode", "x": 120, "y": 80, "w": 70, "h": 24, "value": "{{batchNo}}", "symbology": "CODE128", "foreground": "#000000", "background": "#FFFFFF", "showText": true }
-  ]
-}
+{"page":{"width":210,"height":297,"unit":"mm","dpi":300,"backgroundColor":"#ffffff","background":"#FFFFFF"},"items":[{"type":"text","x":20,"y":20,"w":170,"h":14,"text":"出库单","font":8,"bold":true,"fontFamily":"Microsoft YaHei","align":"center"},{"type":"line","x":20,"y":38,"x2":190,"y2":38,"width":0.5,"color":"#000000"},{"type":"text","x":20,"y":45,"w":170,"h":8,"text":"单据号：{{taskId}}","font":4.5,"fontFamily":"Microsoft YaHei"},{"type":"text","x":20,"y":55,"w":170,"h":8,"text":"物料：{{materialName}}","font":4.5,"fontFamily":"Microsoft YaHei"},{"type":"text","x":20,"y":65,"w":170,"h":8,"text":"数量：{{qty}} {{unit}}","font":4.5,"fontFamily":"Microsoft YaHei"},{"type":"barcode","x":20,"y":80,"w":35,"h":35,"value":"{{taskId}}","symbology":"QR"},{"type":"barcode","x":120,"y":80,"w":70,"h":24,"value":"{{batchNo}}","symbology":"CODE128","foreground":"#000000","background":"#FFFFFF","showText":true}]}

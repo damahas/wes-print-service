@@ -1,211 +1,66 @@
 # Wes.PrintService
 
-Windows 打印服务：提供 **HTTP 管理后台 + RESTful API**（端口 8809），支持 **API 直接提交打印** 与 **MQ（RabbitMQ）消费打印**，本地 SQLite 存储配置与打印记录。
+Windows 打印服务：将只能跑在 Windows 上的打印机驱动，封装为 **HTTP 管理后台 + RESTful API + MQ 消费**（端口 **8809**），让任意业务系统在网络可达时远程驱动本地硬件出纸。数据存本地 SQLite。
 
-> **项目背景**：本服务是为特殊打印场景设计的轻量桥梁，典型需求包括：
-> - **打印机无法联网**：标签/票据打印机仅支持 USB/并口直连，无法接入网络打印服务器，需在已连打印机的 Windows 主机上落地打印。
-> - **远程集中打印**：业务系统（WMS/ERP 等）部署在远端（云端或隔离网络），无法直连现场打印机，通过 API/MQ 将打印任务投递到本地服务完成物理出纸。
-> - **仅有 Windows 驱动服务器、无法被业务系统直接调用**：打印机驱动只能装在 Windows 上，业务系统（容器/非 Windows）无法直接调用 GDI/驱动，本服务将"打印能力"封装为可访问的 HTTP/MQ 接口，解耦业务系统与打印驱动。
->
-> 简言之，它把"只能跑在 Windows 上的打印驱动"暴露成标准接口，让任意系统在网络可达的前提下远程驱动本地硬件出纸。
-
-- 打印引擎：[SkiaSharp](https://github.com/mono/SkiaSharp)（MIT，纯 .NET、无 GDI+ 依赖，net10 下渲染稳定）渲染 JSON 模板，支持标签（如 8cm×5cm）与 A4。
-- MQ：RabbitMQ 已实现；Kafka 预留接口占位。
-- 参考实现：原 WinForms + HttpListener + Stimulsoft 打印方案（已重构为 Web 自托管）。
+**适用场景**：打印机仅 USB/并口直连无法联网、业务系统（WMS/ERP）远端部署、或仅需单台 Windows 主机落地打印。
 
 ---
 
-## 一、项目结构
+## 核心能力
+
+- **打印引擎**：[SkiaSharp](https://github.com/mono/SkiaSharp) 渲染 JSON 模板，支持小标签（如 8×5cm）与 A4，纯 .NET 无 GDI+ 依赖。
+- **三种提交方式**：① 管理后台直接提交；② 对外 API `/api/external/print`；③ MQ 消费。
+- **消息队列**：RabbitMQ 与 Kafka **双通道独立**，可同时开启，各配独立连接与开关。
+- **打印机设置**：在管理后台顶部常驻下拉「选择打印机」，独立于 MQ 配置。
+- **打印记录**：每次任务落库 `PrintRecord`，超时自动清理（默认 30 天，`record.retention-days` 可配）。
+
+---
+
+## 项目结构
 
 ```
 Wes.PrintService.slnx
 ├── Wes.Print.Core/                  # 类库：全部业务逻辑
-│   ├── Storage/                     # SQLite 存储（EF Core）
-│   │   ├── Entities/                # MqConfig / PrintRecord / AppSetting
-│   │   ├── PrintDbContext.cs
-│   │   ├── IStorage.cs              # 仓储接口
-│   │   └── Storage.cs               # EF Core 实现
-│   ├── Api/                         # RESTful API（标准 Controller 写法）
-│   │   ├── Admin/wwwroot/           # 管理后台前端（index.html / app.css / app.js）
-│   │   ├── Dtos/                    # MqConfigDto / PrintRecordDto / SettingDto / PagedResult / SubmitPrintJobDto
+│   ├── Storage/                     # SQLite（EF Core）：MqConfig / PrintRecord / AppSetting
+│   ├── Api/                         # RESTful API + 管理后台前端(Admin/wwwroot)
 │   │   └── Controllers/
-│   │       ├── PrintServiceController.cs  # 管理后台 API：/api/mq/*, /api/printers, /api/records, /api/settings/*, /health, /admin/*
-│   │       └── ExternalApiController.cs   # 对外 API：/api/external/print
-│   ├── Messaging/                   # MQ 抽象（可扩展）
-│   │   ├── IPrintMessageConsumer.cs # 统一接口 + ConsumerOptions + PrintMessage
-│   │   ├── ConsumerFactory.cs       # 按类型创建实现
+│   │       ├── PrintServiceController.cs  # /api/mq/* /api/printers /api/records /api/printer/default /api/settings/* /health
+│   │       └── ExternalApiController.cs   # /api/external/print
+│   ├── Messaging/                   # MQ 抽象：IPrintMessageConsumer + ConsumerFactory
 │   │   ├── RabbitMq/RabbitMqConsumer.cs   # 已实现
-│   │   └── Kafka/KafkaConsumer.cs         # 占位（预留）
-│   ├── Print/                       # 打印核心
-│   │   ├── IPrintEngine.cs
-│   │   ├── SkiaPrintEngine.cs       # SkiaSharp：JSON 模板解析 + 变量替换 + 渲染 PNG + PrintDocument
-│   │   ├── BarcodeRenderer.cs       # 条码绘制（QR / CODE128，纯 Skia 绘制）
-│   │   ├── Template/                # JSON 模板模型（业务人员可改）
-│   │   ├── IPrinterProvider.cs
-│   │   ├── SystemPrinterProvider.cs # System.Drawing.Printing
-│   │   └── PrintJobExecutor.cs      # 统一打印执行流程（MQ 消费 + 对外 API 共用）
-│   └── ServiceCollectionExtensions.cs  # DI 注册入口
-│
-├── Wes.PrintService/                # 宿主：Windows 服务 + Web 自托管
-│   ├── Program.cs                   # WebApplication + UseWindowsService + 端口 8809 + 记录保留定时清理
-│   └── appsettings.json             # Http/Storage/Logging 配置
-│
-└── Deploy/                          # 部署脚本（install/uninstall/backup/rollback/view-logs）
+│   │   └── Kafka/KafkaConsumer.cs         # 已实现
+│   └── Print/                       # SkiaPrintEngine / BarcodeRenderer / Template / PrintJobExecutor
+├── Wes.PrintService/                # 宿主：Windows 服务 + Web 自托管（端口 8809）
+└── Deploy/                          # 部署脚本(install/uninstall/backup/rollback/view-logs)
 ```
 
 ---
 
-## 二、API 一览
+## 快速使用
 
-### 管理后台 API（`PrintServiceController`，端口 8809）
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET  | `/api/mq/config?key=default` | 读取 MQ 配置 |
-| POST | `/api/mq/config` | 保存 MQ 配置（Body: MqConfigDto） |
-| GET  | `/api/mq/status` | MQ 连接状态（Disabled/NoConfig/Idle/Connecting/Connected/Reconnecting） |
-| POST | `/api/mq/connect` `/disconnect` | 手动连接/断开 MQ |
-| GET  | `/api/printers` | 枚举打印机 |
-| GET  | `/api/records?channel=&status=&page=&pageSize=` | 分页查询打印记录 |
-| GET  | `/api/records/{id:long}` | 单条记录（含提交参数 `request`） |
-| POST | `/api/records/purge` | 手动清理超过保留天数的记录，返回删除条数 |
-| GET  | `/api/settings/mq-enabled` | 读取 MQ 启用开关 |
-| POST | `/api/settings/mq-enabled` | 设置 MQ 启用开关（启用→自动连接；停用→断开） |
-| GET  | `/api/settings/record-retention` | 读取打印记录保留天数（默认 30） |
-| POST | `/api/settings/record-retention` | 设置打印记录保留天数（正整数） |
-| GET  | `/health` | 健康检查 |
-| GET  | `/` `/admin/app.css` `/admin/app.js` | 管理后台页面 |
-
-### 对外 API（`ExternalApiController`，供外部系统如 WMS/ERP 调用）
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/external/print` | 提交一次打印任务（同步执行 + 落库），返回记录 Id 与状态 |
-| GET  | `/api/external/print/{id:long}` | 按记录 Id 查询任务结果 |
-
-> 字段定义、请求/响应示例与对接清单见 **[对外 API 详细文档](Document/ExternalApi.md)**。
-
+1. **部署启动**：见 [部署文档](Document/Deploy.md)，服务运行于 `http://<IP>:8809/`。
+2. **选打印机**：管理后台顶部下拉选择本地已安装打印机（对外 API 默认取此项）。
+3. **配模板**：JSON 模板放服务端 `PrintTemp` 目录，或请求时直接传入/传链接；支持 `{{字段}}` 占位、text/barcode(QR、CODE128)/line/image。
+4. **提交打印**：
+   - 外部系统：`POST /api/external/print`（详见 [对外 API 文档](Document/ExternalApi.md)）。
+   - MQ：后台开启 RabbitMQ / Kafka 通道并填连接，业务系统投递 `PrintMessage`。
+5. **看结果**：后台「打印记录」页查状态与错误。
 
 ---
 
-## 三、存储（SQLite + EF Core）
+## 部署
 
-| 表 | 作用 |
-|----|------|
-| `MqConfig` | 存储 MQ 连接与消费配置 |
-| `PrintRecord` | 存储每次打印任务记录（含状态、参数、打印机等） |
-| `AppSetting` | 存储通用运行时键值（如 `mq.enabled`、`record.retention-days`） |
-
-### 打印记录保留策略
-- 配置键 `record.retention-days`，**默认 30 天**（正整数，可在管理后台设置）。
-- 超过保留天数的记录由后台定时任务（每 24 小时）自动清理；也可通过 `POST /api/records/purge` 手动触发。
+`Deploy/` 目录下 `install.bat`（发布+注册服务）、`uninstall.bat`、`start-stop.bat`、`backup.bat`、`rollback.bat`、`view-logs.bat`。
 
 ---
 
-## 四、配置
+## 本地构建
 
-### 文件配置（appsettings.json）
-```json
-{
-  "Http": { "Port": 8809 },
-  "Storage": { "SqlitePath": "WesPrint.db" }
-}
-```
-| 配置项 | 说明 | 默认 |
-|--------|------|------|
-| `Http:Port` | HTTP 监听端口 | `8809` |
-| `Storage:SqlitePath` | SQLite 数据库文件路径（相对当前工作目录） | `WesPrint.db` |
-
-### 运行时设置项（存于 `AppSetting` 表，非文件）
-以下键值通过管理后台接口或数据库 `AppSetting` 表维护，**不在 `appsettings.json` 中**：
-
----
-
-## 五、部署
-部署脚本（`Deploy/` 目录）与详细步骤见 **[部署文档](Document/Deploy.md)**：`install.bat`（发布+注册服务）、`uninstall.bat`、`start-stop.bat`、`backup.bat`、`rollback.bat`、`view-logs.bat`。
-
----
-
-## 六、如何使用
-
-完成部署并启动服务后，按以下步骤投入使用：
-
-1. **打开管理后台**
-   浏览器访问 `http://<部署客户端IP>:8809/`（或本机 `http://127.0.0.1:8809/`），进入 Web 管理界面。
-
-   ![管理后台界面](Document/admin-ui.png)
-
-2. **配置打印机**
-   在管理后台确认「MQ 配置」中的**目标打印机**已设置为现场 Windows 主机实际安装的打印机名称（对外 API 的打印机会取此项，无需在请求中传入）。
-
-3. **准备打印模板**
-   模板为 JSON 文件（业务人员可直接修改，无需改代码），放置在服务端 `PrintTemp` 目录（如 `半成品标签.json`、`A4示例.json`）。三种模板来源任选其一（提交时由 `templateKind` 指定）：
-
-   - **本地模板（T）**：将 `.json` 模板文件放入服务端 `PrintTemp` 目录，提交时 `templateRef` 填模板名（可不含 `.json`）即可。
-   - **传入模板（TS）**：不依赖服务端文件，直接在请求 `templateRef` 中传入 JSON 模板内容原文。
-   - **模板链接（FL）**：`templateRef` 填 `.json` 模板文件的可访问下载链接（http/https），服务端拉取后使用。
-
-   模板通过 `{{字段名}}` 占位符绑定数据，支持小标签（如 `page.width:80, height:50, unit:"mm"`，即 8cm×5cm）与 A4（`210×297mm`）；元素含 `text`（文字）、`barcode`（QR / CODE128 条码）、`line`（线条）、`image`（图片）。
-
-4. **提交打印任务**
-
-   请求体 JSON 结构（`POST /api/external/print`）：
-
-   ```json
-   {
-     "templateKind": "T",
-     "templateRef": "label_product",
-     "fields": [
-       { "productCode": "P-1001", "productName": "示例产品", "qty": "12" }
-     ],
-     "sourceRef": "WO-20260814-001"
-   }
-   ```
-
-   | 字段 | 说明 |
-   |------|------|
-   | `templateKind` | 模板来源：`T`=本地模板名 / `TS`=传入模板内容 / `FL`=模板文件链接（默认 `T`） |
-   | `templateRef` | 对应来源的模板名 / 模板内容 / 下载链接（必填） |
-   | `fields` | 打印数据源，字段字典列表（可多行） |
-   | `sourceRef` | 调用方业务单号，用于溯源（可选） |
-
-   - **外部系统调用**：通过 `POST /api/external/print` 提交；完整字段、响应与示例见 [对外 API 文档](Document/ExternalApi.md)。
-   - **MQ 投递**：在管理后台启用 MQ 并填写连接信息，由业务系统向队列投递 `PrintMessage`（结构与上述 JSON 一致，唯独无需 `sourceRef`，改用消息自有标识）。
-
-5. **查看结果**
-   在管理后台「打印记录」页可查看每次任务的状态、错误信息与提交参数；也可通过 `GET /api/external/print/{id}` 按 Id 查询。
-
-> 健康检查：`GET /health` 返回 `{"status":"ok"}`，可用于服务存活探测。
-
----
-
-## 七、适用场景
-
-本服务针对不同打印环境，提供三种接入方式：
-
-### 场景一：MQ 解耦的远程打印（触发入口与装驱动电脑分离）
-业务系统（触发打印入口）与装有打印机驱动的电脑（实际出纸端）不在同一台机器、甚至网络隔离。业务系统只管向 MQ 投递打印消息，**无需知道打印机驱动程序在哪台电脑上**；装驱动的电脑上运行本服务并连接同一 MQ，消费消息后在本地完成打印。两者通过消息队列解耦，互不直接依赖。
-
-- 适用：WMS/ERP 等中心系统 + 分散在多个现场（仓库/门店）的打印终端。
-- 接入：管理后台启用 MQ、填写连接信息，业务系统投递 `PrintMessage`。
-
-### 场景二：固定单机本地打印（浏览器直连 127.0.0.1）
-打印机固定连在某台 Windows 电脑，且打印触发也在这台电脑上（或同机浏览器操作）。直接前台浏览器通过本机 `http://127.0.0.1:8809/` 打开管理后台或调 API 触发打印，无需任何中间件。
-
-- 适用：单工位、单台打印机的轻量场景。
-- 接入：服务随开机启动，浏览器 `127.0.0.1:8809` 操作即可。
-
-### 场景三：直连 API 的远程打印（不想搭建 MQ）
-不想引入和维护 MQ 中间件时，外部系统直接通过**部署客户端的 IP**（如 `http://<部署客户端IP>:8809/`）调用 `POST /api/external/print` 提交打印。服务即收即打，部署最简单。
-
-- 适用：调用方网络可达、但不愿运维 MQ 的场景。
-- 接入：按 [对外 API 文档](Document/ExternalApi.md) 直接 HTTP 调用。
-
----
-
-## 八、本地构建运行
 ```powershell
 dotnet build Wes.PrintService.slnx -c Debug
-# 运行（WorkDir 固定为 Wes.PrintService 目录，确保读取正确的 WesPrint.db）
 cd Wes.PrintService/bin/Debug/net10.0-windows
 dotnet Wes.PrintService.dll
 # 管理后台：http://localhost:8809/   健康检查：http://localhost:8809/health
 ```
+
+> 运行 WorkDir 固定为 `Wes.PrintService` 目录，确保读取正确的 `WesPrint.db`。

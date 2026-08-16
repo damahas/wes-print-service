@@ -13,5 +13,4 @@ public class MqConfigDto
     public string? GroupId { get; set; }
     public string? BootstrapServers { get; set; }
     public bool AutoAck { get; set; } = true;
-    public string? PrinterName { get; set; }
 }

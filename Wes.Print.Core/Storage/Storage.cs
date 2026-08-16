@@ -38,7 +38,6 @@ public class Storage : IStorage
             existing.GroupId = config.GroupId;
             existing.BootstrapServers = config.BootstrapServers;
             existing.AutoAck = config.AutoAck;
-            existing.PrinterName = config.PrinterName;
             existing.UpdatedAt = config.UpdatedAt;
         }
         await _db.SaveChangesAsync(ct);

@@ -1,0 +1,9 @@
+{
+  "page": { "width": 80, "height": 50, "unit": "mm", "dpi": 300, "background": "#FFFFFF" },
+  "items": [
+    { "type": "text",  "x": 1, "y": 1,  "w": 78, "h": 9, "text": "成品：{{materialName}}", "font": 4, "bold": true, "fontFamily": "Microsoft YaHei" },
+    { "type": "text",  "x": 1, "y": 11, "w": 78, "h": 6, "text": "批号：{{batchNo}}", "font": 3.5, "fontFamily": "Microsoft YaHei" },
+    { "type": "text",  "x": 1, "y": 17, "w": 78, "h": 6, "text": "数量：{{qty}} {{unit}}", "font": 3.5, "fontFamily": "Microsoft YaHei" },
+    { "type": "barcode", "x": 45, "y": 24, "w": 32, "h": 12, "value": "{{taskId}}", "symbology": "CODE128", "foreground": "#000000", "background": "#FFFFFF", "showText": true }
+  ]
+}

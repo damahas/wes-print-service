@@ -48,14 +48,17 @@ app.MapControllers();
 // 管理后台页面（简约科技风）
 app.MapAdminPages();
 
-// 初始化 MQ 连接状态；若开关启用且配置完整则自动连接（后台，不阻塞启动）
+// 初始化 MQ 连接状态；若某通道开关启用且配置完整则自动连接（后台，不阻塞启动）
 using (var scope = app.Services.CreateScope())
 {
     var mq = scope.ServiceProvider.GetRequiredService<Wes.Print.Core.Messaging.MqConnectionManager>();
     mq.InitFromStorage();
-    if (mq.State is Wes.Print.Core.Messaging.MqConnectionState.Idle)
+    foreach (var st in await mq.GetAllStatusAsync())
     {
-        _ = Task.Run(() => mq.StartAsync());
+        if (st.State == "Idle")
+        {
+            _ = Task.Run(() => mq.StartAsync(st.Key));
+        }
     }
 }
 
