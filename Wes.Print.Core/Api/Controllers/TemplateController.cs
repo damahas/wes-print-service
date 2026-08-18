@@ -17,7 +17,7 @@ public class TemplateController : ControllerBase
 
     private static string ResolvePrintTempDir()
     {
-        var dllDir = Path.GetDirectoryName(typeof(TemplateController).Assembly.Location) ?? ".";
+        var dllDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         var deployed = Path.Combine(dllDir, "PrintTemp");
         if (Directory.Exists(deployed)) return deployed;
         var dir = dllDir;

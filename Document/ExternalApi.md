@@ -44,16 +44,16 @@ Content-Type: application/json
 |------|------|------|--------|------|
 | `templateKind` | string | 否 | `"T"` | 模板来源类型：`T`=服务端模板名 / `TS`=模板内容 / `FL`=文件下载链接 |
 | `templateRef` | string | **是** | — | 与 `templateKind` 对应的模板引用/内容（见下表） |
-| `fields` | `List<Dictionary<string,string>>` | 否 | 空列表 | 打印数据源（key=value 字段字典的列表，可多行） |
+| `fields` | `List<Dictionary<string,string>>` | 否 | 空列表 | 打印数据源（key=value 字段字典的列表）。**数组成员的每个元素对应一张要打印的标签/单据**，因此一次提交可打印多张——例如传 3 个字典元素即打印 3 张（每张用各自的字段值渲染） |
 | `sourceRef` | string | 否 | — | 调用方业务单号等，用于记录溯源（为空则用消息标识） |
 
 **`templateRef` 与 `templateKind` 的对应关系：**
 
 | templateKind | templateRef 含义 | 示例 |
 |--------------|------------------|------|
-| `T`  | 服务端 `PrintTemp` 目录下的 `.frx` 模板文件名（可不含扩展名） | `"label_product"` |
-| `TS` | FastReport `.frx` 模板内容原文（文本） | `"<Report>...</Report>"` |
-| `FL` | 模板文件下载链接（http/https，当前支持 `.frx`） | `"https://host/tpl/label.frx"` |
+| `T`  | 服务端 `PrintTemp` 目录下的 JSON 模板文件名（可不含扩展名） | `"label_product"` |
+| `TS` | JSON 模板内容原文（文本） | `"{ \"type\":\"label\", ... }"` |
+| `FL` | 模板文件下载链接（http/https，JSON 模板） | `"https://host/tpl/label.json"` |
 
 ### 2.2 响应
 
@@ -144,13 +144,14 @@ GET /api/external/print/{id:long}
 PrintMessage {
   templateKind : string            // T / TS / FL
   templateRef  : string            // 模板名 / 模板内容 / 文件链接
-  fields       : List<Dictionary<string,string>>  // 数据源（注册为报表数据源 "PrintData"）
+  fields       : List<Dictionary<string,string>>  // 数据源（每个字典元素 = 一页/一张单据）
   messageId    : string?           // 来源标识（对外 API 中由 sourceRef 映射）
 }
 ```
 
-- `fields` 在引擎中会被合并为一张 `DataTable`，并以名称 **`PrintData`** 注册为报表数据源，供 `.frx` 模板绑定字段。
-- 多行数据：列表长度 > 1 时，报表可按多行/多页渲染。
+- **`fields` 是逐行（逐元素）渲染的**：引擎遍历列表，把**每个字典元素渲染为一页**（一张标签/单据），模板中的 `{{field}}` 占位符用该元素自身的 key/value 替换，最后把所有页作为一个打印作业输出。
+- **为何是数组（可打印多张）**：列表的每个字典元素代表**一张独立要打印的标签/单据**。传 1 个元素 = 打印 1 张；传 N 个元素 = 打印 N 张，每张用对应字典里的字段值渲染（如同一模板批量打印不同内容）。`fields` 为空时引擎按 1 张空白页渲染。
+- 注意：渲染引擎基于 Skia 自绘，数据不经过 DataTable 数据源绑定，而是直接按元素逐页替换占位符。
 
 ---
 
@@ -177,4 +178,4 @@ PrintMessage {
 1. 服务已启动且可访问 `GET /health`（返回 `{"status":"ok"}`）。
 2. 管理后台已将 MQ 配置中的「目标打印机」设为期望打印机（对外 API 依赖此配置）。
 3. 模板文件已放置于服务端 `PrintTemp` 目录（当 `templateKind=T`），或提供可访问的 `FL` 下载链接 / 直接传 `TS` 内容。
-4. `fields` 字段名与 `.frx` 模板中绑定的数据列名一致（数据源名为 `PrintData`）。
+4. `fields` 中每个字典的 **key** 需与模板里的占位符名一致（模板用 `{{key}}` 占位，引擎按元素逐页替换为对应 value）。

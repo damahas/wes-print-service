@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-Wes.PrintService-f3b88997-fd36-429f-a2c6-f4a0481245a0</UserSecretsId>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
+    <FileVersion>1.0.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,5 +16,21 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Wes.Print.Core\Wes.Print.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- wwwroot 静态资源：库项目的 Content 不会随 ProjectReference 自动进入发布目录，
+         这里显式包含，确保发布后落在 publish 根部的 wwwroot/ -->
+    <Content Include="..\Wes.Print.Core\wwwroot\**\*">
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 部署不需要 Development 环境配置，发布时剔除 -->
+    <Content Remove="appsettings.Development.json" />
+    <None Remove="appsettings.Development.json" />
   </ItemGroup>
 </Project>

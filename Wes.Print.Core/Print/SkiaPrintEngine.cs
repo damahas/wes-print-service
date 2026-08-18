@@ -16,7 +16,7 @@ namespace Wes.Print.Core.Print;
 
 /// <summary>
 /// 基于 SkiaSharp（MIT，纯 .NET，无 GDI+ 依赖）的免费打印引擎。
-/// 取代 FastReport.OpenSource（net10 下 GDI+ 渲染失效导致空白）。
+/// 原为 FastReport.OpenSource（net10 下 GDI+ 渲染失效导致空白），已迁移至 Skia 位图渲染。
 /// 模板为 JSON 文件（业务人员可改），支持小标签（如 8cm×5cm）与 A4 纸。
 /// 模板来源语义沿用 PrintMessage 的 T/TS/FL：
 ///   T  → PrintTemp 目录下的 .json 模板文件名
@@ -33,7 +33,7 @@ public class SkiaPrintEngine : IPrintEngine
 
     private static string ResolvePrintTempDir()
     {
-        var dllDir = Path.GetDirectoryName(typeof(SkiaPrintEngine).Assembly.Location) ?? ".";
+        var dllDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         var deployed = Path.Combine(dllDir, "PrintTemp");
         if (Directory.Exists(deployed)) return deployed;
 

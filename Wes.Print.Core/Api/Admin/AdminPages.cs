@@ -20,10 +20,9 @@ public static class AdminPages
     /// </summary>
     private static string ResolveWwwRoot()
     {
-        var asmLoc = typeof(AdminPages).Assembly.Location;
-        var dllDir = Path.GetDirectoryName(asmLoc) ?? ".";
+        var dllDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
 
-        // 部署态：dll 同级 wwwroot
+        // 部署态：dll 同级 wwwroot（发布后位于根目录）
         var deployed = Path.Combine(dllDir, "wwwroot");
         if (Directory.Exists(deployed)) return deployed;
 
@@ -31,7 +30,7 @@ public static class AdminPages
         var dir = dllDir;
         while (!string.IsNullOrEmpty(dir))
         {
-            var candidate = Path.Combine(dir, "Wes.Print.Core", "Api", "Admin", "wwwroot");
+            var candidate = Path.Combine(dir, "Wes.Print.Core", "wwwroot");
             if (Directory.Exists(candidate)) return candidate;
             var parent = Path.GetDirectoryName(dir);
             if (parent == dir) break;

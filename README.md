@@ -31,26 +31,33 @@ Wes.PrintService.slnx
 │   │   └── Kafka/KafkaConsumer.cs         # 已实现
 │   └── Print/                       # SkiaPrintEngine / BarcodeRenderer / Template / PrintJobExecutor
 ├── Wes.PrintService/                # 宿主：Windows 服务 + Web 自托管（端口 8809）
-└── Deploy/                          # 部署脚本(install/uninstall/backup/rollback/view-logs)
+└── Deploy/                          # 部署脚本(install/uninstall/service/backup/rollback/logs/package)
 ```
 
 ---
 
 ## 快速使用
 
-1. **部署启动**：见 [部署文档](Document/Deploy.md)，服务运行于 `http://<IP>:8809/`。
+1. **安装服务**：以**管理员身份**运行 `Deploy\install.bat`（右键 → 以管理员身份运行），服务启动后访问 `http://127.0.0.1:8809/`。
 2. **选打印机**：管理后台顶部下拉选择本地已安装打印机（对外 API 默认取此项）。
 3. **配模板**：JSON 模板放服务端 `PrintTemp` 目录，或请求时直接传入/传链接；支持 `{{字段}}` 占位、text/barcode(QR、CODE128)/line/image。
 4. **提交打印**：
    - 外部系统：`POST /api/external/print`（详见 [对外 API 文档](Document/ExternalApi.md)）。
    - MQ：后台开启 RabbitMQ / Kafka 通道并填连接，业务系统投递 `PrintMessage`。
 5. **看结果**：后台「打印记录」页查状态与错误。
+6. **更新服务**：停服务（管理员运行 `Deploy\service.bat stop`，或直接 `net stop WesPrintService`）→ 重新发布（`Deploy\install.bat` 会自动先卸载再重装；或仅替换发布目录 exe 后 `Deploy\service.bat restart`）→ 数据存于 SQLite，更新不丢失，必要时用 `Deploy\rollback.bat` 回滚。
 
 ---
 
 ## 部署
 
-`Deploy/` 目录下 `install.bat`（发布+注册服务）、`uninstall.bat`、`start-stop.bat`、`backup.bat`、`rollback.bat`、`view-logs.bat`。
+`Deploy/` 目录下含 7 个脚本：`install.bat`（发布+注册服务）、`uninstall.bat`、`service.bat`（互动管理服务：start/stop/restart/status/logs）、`backup.bat`、`rollback.bat`、`logs.bat`（查看事件日志）、`package.bat`（打包发布产物为 zip）。
+
+> **重要：所有 `.bat` 必须以管理员身份运行。**
+> 以普通用户双击会失败（服务创建/删除、端口绑定、停止他人进程等操作都需要管理员权限）。
+> 正确做法：右键脚本 → **“以管理员身份运行”**；或在已提升权限的终端中执行。install.bat 内部若检测到非管理员会明确提示并退出。
+>
+> 发布包（如 `publish-framework/`、`publish-standalone/`）里自带 `install.bat`、`uninstall.bat`、`service.bat` 三个脚本，部署到目标机器后同样需以管理员身份运行来安装/管理。
 
 ---
 

@@ -1,0 +1,11 @@
+{
+  "page": { "width": 80, "height": 50, "unit": "mm", "dpi": 300, "background": "#FFFFFF" },
+  "items": [
+    { "type": "text",  "x": 1, "y": 1,  "w": 55, "h": 9, "text": "物料名称：{{materialName}}", "font": 4, "bold": true, "fontFamily": "Microsoft YaHei", "align": "left", "valign": "top" },
+    { "type": "text",  "x": 1, "y": 11, "w": 55, "h": 6,  "text": "批号：{{batchNo}}", "font": 3.5, "fontFamily": "Microsoft YaHei" },
+    { "type": "text",  "x": 1, "y": 17, "w": 55, "h": 6,  "text": "数量：{{qty}} {{unit}}", "font": 3.5, "fontFamily": "Microsoft YaHei" },
+    { "type": "text",  "x": 1, "y": 23, "w": 55, "h": 6,  "text": "布：{{fab}}", "font": 3.5, "fontFamily": "Microsoft YaHei", "wrap": true },
+    { "type": "barcode", "x": 58, "y": 10, "w": 20, "h": 20, "value": "{{taskId}}", "symbology": "QR", "foreground": "#000000", "background": "#FFFFFF", "showText": false },
+    { "type": "text",  "x": 58, "y": 32, "w": 20, "h": 5,  "text": "{{taskId}}", "font": 2.5, "fontFamily": "Microsoft YaHei", "align": "center" }
+  ]
+}

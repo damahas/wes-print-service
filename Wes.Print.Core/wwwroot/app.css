@@ -79,6 +79,13 @@ h2::before{content:'';width:3px;height:15px;background:linear-gradient(180deg,va
 /* MQ 通道：未启用时隐藏配置与状态 */
 .mq-body{display:none}
 .card.on .mq-body{display:block}
+
+/* MQ 视图：两个通道卡片之间留出呼吸感，避免贴得太紧 */
+#view-mq:not([hidden]){display:flex;flex-direction:column;gap:24px}
+@media(min-width:860px){
+  #view-mq:not([hidden]){flex-direction:row;align-items:flex-start;gap:22px}
+  #view-mq > .card{flex:1 1 0;min-width:0}
+}
 label{display:block;color:var(--muted);font-size:13px;margin:12px 0 6px}
 input,select{
   width:100%;background:var(--panel-inset);border:1px solid var(--line);color:var(--txt);
@@ -183,7 +190,7 @@ tbody tr:hover td{background:rgba(255,255,255,.03)}
 .lk-btn:hover{border-color:var(--accent);background:rgba(34,211,238,.12);color:#fff}
 
 /* ===== 滚动条 ===== */
-*{-ms-overflow-style:thin;scrollbar-width:thin;scrollbar-color:rgba(120,140,170,.3) transparent}
+*{scrollbar-width:thin}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(120,140,170,.26);border-radius:9px;border:2px solid transparent;background-clip:padding-box}
@@ -244,10 +251,6 @@ tbody tr:hover td{background:rgba(255,255,255,.03)}
 .tpl-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(34,211,238,.06)}
 .tpl-tab-panel{flex:1 1 auto;min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
 .tpl-tab-panel[hidden]{display:none!important}
-.tpl-side-sec{border:1px solid var(--line);border-radius:var(--radius-sm);padding:0;overflow:hidden}
-.tpl-tab-panel .tpl-side-sec > :not(.tpl-side-h){padding:12px}
-.tpl-hint{font-size:12px;color:var(--muted);font-weight:400;display:inline-flex;align-items:center;gap:6px}
-.tpl-hint select{padding:3px 6px;font-size:12px}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .fld-grid .fld-wide{grid-column:1 / -1}
 .fld{display:flex;flex-direction:column;margin:0}
@@ -270,4 +273,3 @@ tbody tr:hover td{background:rgba(255,255,255,.03)}
 .tpl-preview{padding:14px 18px;border-top:1px solid var(--line);background:var(--panel-inset)}
 .tpl-preview img{background:#fff;border:1px solid var(--line);border-radius:8px;display:block;max-width:100%}
 @media(max-width:860px){.tpl-body{flex-direction:column;height:auto;max-height:none}.tpl-side{flex:1;border-left:0;border-top:1px solid var(--line);max-height:none;height:auto}}
-

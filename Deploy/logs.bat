@@ -1,14 +1,17 @@
 @echo off
 rem ============================================================
-rem 查看 Wes.PrintService 的 Windows 事件日志
-rem 用法：view-logs.bat [条数]
-rem   默认显示最近 50 条，可传参如 view-logs.bat 100
+rem View Wes.PrintService Windows Event Log.
+rem Usage: logs.bat [count]
+rem   Default shows the latest 50 entries. e.g. logs.bat 100
 rem ============================================================
 setlocal
 set SOURCE=Wes.PrintService
 set COUNT=%1
 if "%COUNT%"=="" set COUNT=50
 
-echo ==^> 最近 %COUNT% 条事件（来源 %SOURCE%）...
+echo ==^> Showing last %COUNT% events from source %SOURCE% ...
 wevtutil qe Application "/q:*[System[Provider[@Name='%SOURCE%']]]" /c:%COUNT% /rd:true /f:text
+echo.
+echo Press any key to close ...
+pause >nul
 endlocal

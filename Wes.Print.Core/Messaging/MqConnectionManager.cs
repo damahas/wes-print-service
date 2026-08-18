@@ -132,11 +132,14 @@ public class MqConnectionManager : IDisposable
 
         private bool IsEnabledFromStorage(IStorage storage)
         {
+            // 与 GetMqEnabled 接口保持一致：开关设置缺省为 false（未启用）。
+            // 只有显式存储了 "true" 才算启用，避免新库无任何配置时误判为已启用。
             var enabledRaw = storage.GetSettingAsync($"mq.enabled.{_key}").GetAwaiter().GetResult();
+            if (string.IsNullOrEmpty(enabledRaw)) return false;
             if (enabledRaw == "false") return false;
             var cfg = storage.GetMqConfigAsync(_key).GetAwaiter().GetResult();
             if (cfg is not null && !cfg.Enabled) return false;
-            return true;
+            return enabledRaw == "true";
         }
 
         public async Task StartAsync()

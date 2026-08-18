@@ -8,23 +8,23 @@ public class PrintMessage
 {
     /// <summary>
     /// 打印模板来源类型：
-    /// T  = 服务端模板名（TemplateRef 为 PrintTemp 目录下的 .frx 文件名）
-    /// TS = 模板内容（TemplateRef 为 .frx 原文文本）
-    /// FL = 文件下载链接（TemplateRef 为 HTTP(S) URL）
+    /// T  = 服务端模板名（TemplateRef 为 PrintTemp 目录下的 .json 文件名）
+    /// TS = 模板内容（TemplateRef 为 JSON 文本）
+    /// FL = 文件下载链接（TemplateRef 为 HTTP(S) URL，仅支持 .json）
     /// </summary>
     public string TemplateKind { get; set; } = TemplateKindTemplate;
 
     /// <summary>
     /// 与 TemplateKind 对应的模板引用/内容：
-    /// T  → 模板文件名（服务端 PrintTemp 目录下的 .frx，可不含扩展名）
-    /// TS → 模板文件内容（FastReport .frx 原始文本）
+    /// T  → 模板文件名（服务端 PrintTemp 目录下的 .json，可不含扩展名）
+    /// TS → 模板文件内容（JSON 文本）
     /// FL → 文件下载链接（HTTP/HTTPS），引擎下载后按扩展名选择打印方式
     /// </summary>
     public string? TemplateRef { get; set; }
 
     /// <summary>
-    /// 打印数据源（key/value 字段字典的列表，可多行）。
-    /// 引擎将其合并为 DataTable 注册为报表数据源 "PrintData"。
+    /// 打印数据源（key/value 字段字典的列表，可多行）。每行数据渲染为一页，
+    /// 模板中的 {{field}} 占位符由对应行的字段值替换。
     /// </summary>
     public List<Dictionary<string, string>> Fields { get; set; } = new();
 
@@ -32,11 +32,11 @@ public class PrintMessage
     public string? MessageId { get; set; }
 
     #region 模板来源类型常量
-    /// <summary>服务端模板名：TemplateRef 为模板文件名</summary>
+    /// <summary>服务端模板名：TemplateRef 为 PrintTemp 目录下的 .json 文件名</summary>
     public const string TemplateKindTemplate = "T";
-    /// <summary>模板内容：TemplateRef 为模板文件内容</summary>
+    /// <summary>模板内容：TemplateRef 为 .json 模板文本</summary>
     public const string TemplateKindTemplateContent = "TS";
-    /// <summary>文件：TemplateRef 为文件下载链接</summary>
+    /// <summary>文件：TemplateRef 为 .json 文件下载链接</summary>
     public const string TemplateKindFile = "FL";
     #endregion
 }

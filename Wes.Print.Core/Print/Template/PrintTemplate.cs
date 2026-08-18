@@ -4,7 +4,7 @@ namespace Wes.Print.Core.Print.Template;
 
 /// <summary>
 /// JSON 打印模板模型（业务人员可改，无需编译）。
-/// 取代原 FastReport .frx 模板，基于 SkiaSharp 纯 .NET 渲染，无 GDI+ 依赖，net10 稳定。
+/// 基于 SkiaSharp 纯 .NET 渲染，无 GDI+ 依赖，net10 稳定。
 /// 模板来源语义沿用 PrintMessage 的 T/TS/FL：
 ///   T  → PrintTemp 目录下的 .json 文件名
 ///   TS → 模板内容（JSON 文本）

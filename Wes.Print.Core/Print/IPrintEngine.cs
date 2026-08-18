@@ -6,7 +6,7 @@ using Wes.Print.Core.Messaging;
 namespace Wes.Print.Core.Print;
 
 /// <summary>
-/// 打印引擎抽象。FastReport.OpenSource 实现（加载 .frx + 变量 + Print），参考 kp-print。
+/// 打印引擎抽象。当前实现为 SkiaPrintEngine（JSON 模板 + SkiaSharp 渲染 + Windows 打印）。
 /// </summary>
 public interface IPrintEngine
 {

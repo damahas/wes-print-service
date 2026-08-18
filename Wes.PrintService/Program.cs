@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting.WindowsServices;
+using System;
 using System.Threading;
 using Wes.Print.Core;
 using Wes.Print.Core.Api;
@@ -12,11 +13,14 @@ var builder = WebApplication.CreateBuilder(args);
 // 支持作为 Windows 服务运行
 builder.Host.UseWindowsService();
 
-// SQLite 路径（默认相对当前工作目录的 WesPrint.db，避免随编译 TFM 目录分裂成多份库）
+// SQLite 路径（默认相对 exe 所在目录的 WesPrint.db）。
+// 注意：必须用 AppContext.BaseDirectory 而非 Environment.CurrentDirectory，
+// 因为作为 Windows 服务运行时 CurrentDirectory 是 C:\Windows\system32，
+// 会导致数据库文件落在系统目录下。
 var sqlitePath = builder.Configuration["Storage:SqlitePath"] ?? "WesPrint.db";
 if (!Path.IsPathRooted(sqlitePath))
 {
-    sqlitePath = Path.Combine(Environment.CurrentDirectory, sqlitePath);
+    sqlitePath = Path.Combine(AppContext.BaseDirectory, sqlitePath);
 }
 
 builder.Services.AddPrintCore(sqlitePath);

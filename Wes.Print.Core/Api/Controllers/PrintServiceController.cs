@@ -35,10 +35,11 @@ public class PrintServiceController : ControllerBase
     #region 打印机
     [Route("api/printers")]
     [HttpGet]
-    public IActionResult GetPrinters()
+    public async Task<IActionResult> GetPrinters(CancellationToken ct)
     {
         var printers = _printerProvider.GetPrinters();
-        var def = _printerProvider.DefaultPrinterName;
+        var saved = await _storage.GetSettingAsync(DefaultPrinterKey, ct);
+        var def = string.IsNullOrWhiteSpace(saved) ? _printerProvider.DefaultPrinterName : saved;
         return Ok(new { defaultPrinter = def, printers });
     }
 
