@@ -46,7 +46,7 @@ Wes.PrintService.slnx
    - MQ：后台开启 RabbitMQ / Kafka 通道并填连接，业务系统投递 `PrintMessage`。
 5. **看结果**：后台「打印记录」页查状态与错误。
 6. **更新服务**：停服务（管理员运行 `Deploy\service.bat stop`，或直接 `net stop WesPrintService`）→ 重新发布（`Deploy\install.bat` 会自动先卸载再重装；或仅替换发布目录 exe 后 `Deploy\service.bat restart`）→ 数据存于 SQLite，更新不丢失，必要时用 `Deploy\rollback.bat` 回滚。
-
+![项目截图](Document/admin-ui.png)
 ---
 
 ## 部署
