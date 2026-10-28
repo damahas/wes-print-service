@@ -17,7 +17,6 @@
 | `service.bat`      | 管理服务：`start` / `stop` / `restart` / `status` / `logs`，双击无参数则进入交互菜单（含查看日志）。 |
 | `backup.bat`      | 备份当前发布目录到 `Deploy\backups\`，保留最近 5 份。更新前建议先执行。 |
 | `rollback.bat`    | 用指定/最新备份覆盖发布目录并重启服务，实现回滚。 |
-| `logs.bat`        | 通过 `wevtutil` 查看 Wes.PrintService 事件日志，默认最近 50 条（可传参条数）。也可直接用 `service.bat logs`。 |
 | `package.bat`     | 将已发布的 `publish-framework` / `publish-standalone` 打包为 `Deploy\publish\WesPrint-framework-{version}.zip`（依赖框架，需 .NET 10）与 `WesPrint-standalone-{version}.zip`（自包含，含运行环境）。版本号从 `Wes.PrintService.csproj` 的 `<FileVersion>` 读取。 |
 
 ## 常用命令
@@ -36,10 +35,9 @@ Deploy\service.bat logs 100
 REM 卸载
 Deploy\uninstall.bat
 
-REM 更新前备份 / 回滚（查看日志也可用 logs.bat）
+REM 更新前备份 / 回滚（查看日志用 service.bat logs）
 Deploy\backup.bat
 Deploy\rollback.bat
-Deploy\logs.bat 100
 
 REM 打包发布产物（需先完成对应发布）
 Deploy\package.bat
@@ -49,9 +47,41 @@ Deploy\package.bat
 - `WesPrint-framework-{version}.zip`：框架依赖版，目标机需已安装 .NET 10 运行时。
 - `WesPrint-standalone-{version}.zip`：自包含版，内含运行环境，可直接解压到无 .NET 的机器使用。
 
-二者解压后均含 `install.bat` / `uninstall.bat` / `service.bat`，以管理员身份运行 `install.bat` 即可安装为服务。
+二者解压后均含 `Wes.PrintService.exe`、`wwwroot/`、`appsettings.json` 以及 `install.bat` / `uninstall.bat` / `service.bat`（`package.bat` 打包时自动复制进去）。
+看日志直接用解压目录下的 `service.bat logs`（`logs.bat` 已移除，功能与 `service.bat logs` 重复）。
+以管理员身份运行解压目录下的 `install.bat` 即可安装为服务：`install.bat` 会自动识别同目录的 exe 走「部署包模式」，不会再触发 `dotnet publish`；在仓库 `Deploy\` 下运行时仍保持「先发布再安装」。
 
 > 说明：以上命令需在**仓库根目录**执行（如 `d:\project\KP\Wes.PrintService`）。脚本均在 `Deploy/` 目录下。
+
+## 最小体积发布（含运行环境）
+
+发布配置：`Wes.PrintService/Properties/PublishProfiles/Standalone-Min-win-x64.pubxml`
+（自包含 win-x64 + 单文件 + 单文件压缩 + 剔除 PDB + 卫星资源只留英文）
+
+```bat
+REM 自包含最小包：含 .NET 10 运行时，产物只有一个 exe + wwwroot（约 63MB）
+dotnet publish Wes.PrintService -p:PublishProfile=Standalone-Min-win-x64
+
+REM 框架依赖版：不含运行时，目标机需装 .NET 10（约 30MB）
+dotnet publish Wes.PrintService -p:PublishProfile=Standalone-Min-win-x64 -p:SelfContained=false -p:EnableCompressionInSingleFile=false
+
+REM 打 zip
+Deploy\package.bat
+```
+
+实测体积（win-x64 / Release）：
+
+| 发布方式 | 体积 | 备注 |
+|----------|------|------|
+| 默认自包含（多文件，含 PDB） | 215 MB | 其中 `libSkiaSharp.pdb` 就占 80MB |
+| 去 PDB（多文件） | 135 MB | |
+| **本配置（单文件 + 压缩）** | **63 MB** | 单个 `Wes.PrintService.exe`，已冒烟验证可用 |
+| 框架依赖（不含运行时） | 30 MB | 目标机须预装 .NET 10 运行时 |
+| 再加 `PublishTrimmed`（裁剪） | 26~30 MB | **禁止**：EF Core/MVC 依赖反射，实测启动即 `MissingMethodException`，`TrimMode=partial` 时接口全 500 |
+
+> 注意：`EnableCompressionInSingleFile`（压缩）与 `PublishTrimmed`（裁剪）都只对**自包含**生效，
+> 框架依赖发布时必须加 `-p:SelfContained=false -p:EnableCompressionInSingleFile=false -p:PublishTrimmed=false`。
+> 压缩与 `PublishReadyToRun` 互斥，本配置已显式关闭 R2R。
 
 ## 配置说明（脚本顶部变量）
 - `SERVICE_NAME` 服务名（默认 `WesPrintService`）

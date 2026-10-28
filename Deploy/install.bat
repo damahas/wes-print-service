@@ -2,6 +2,11 @@
 rem ============================================================
 rem Install Wes.PrintService as a Windows service.
 rem Run as Administrator.
+rem
+rem Two modes (auto detected):
+rem   1) Deploy package: this bat sits next to Wes.PrintService.exe
+rem      (unzipped from WesPrint-*-{version}.zip) -> register directly.
+rem   2) Repo: run from Deploy\ -> publish first, then register.
 rem ============================================================
 setlocal
 
@@ -16,20 +21,30 @@ set "PUBLISH_DIR=%PROJECT_DIR%\bin\%CONFIGURATION%\net10.0-windows\%RUNTIME%\pub
 set "EXE_PATH=%PUBLISH_DIR%\Wes.PrintService.exe"
 set "WWWROOT_DIR=%PUBLISH_DIR%\wwwroot"
 
-echo ==^> Building project (%CONFIGURATION% / %RUNTIME%) ...
-pushd "%PROJECT_DIR%"
-dotnet publish -c %CONFIGURATION% -r %RUNTIME% --self-contained false
-if errorlevel 1 (
-    echo Build failed.
+if exist "%~dp0Wes.PrintService.exe" (
+    rem ---- Mode 1: deploy package, scripts + exe in the same folder ----
+    set "PUBLISH_DIR=%~dp0."
+    set "EXE_PATH=%~dp0Wes.PrintService.exe"
+    set "WWWROOT_DIR=%~dp0wwwroot"
+    echo ==^> Deploy package detected, using: %~dp0Wes.PrintService.exe
+) else (
+    rem ---- Mode 2: repository ----
+    echo ==^> Building project ^(%CONFIGURATION% / %RUNTIME%^) ...
+    pushd "%PROJECT_DIR%"
+    dotnet publish -c %CONFIGURATION% -r %RUNTIME% --self-contained false
+    if errorlevel 1 (
+        echo Build failed.
+        popd
+        exit /b 1
+    )
     popd
-    exit /b 1
+    echo     Build succeeded: %EXE_PATH%
 )
-popd
+
 if not exist "%EXE_PATH%" (
     echo Build failed: cannot find %EXE_PATH%
     exit /b 1
 )
-echo     Build succeeded: %EXE_PATH%
 if not exist "%WWWROOT_DIR%\index.html" (
     echo Validation failed: cannot find %WWWROOT_DIR%\index.html
     exit /b 1

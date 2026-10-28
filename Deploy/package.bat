@@ -37,6 +37,22 @@ if not exist "%SRC_STANDALONE%\" (
 
 if not exist "%OUT_DIR%\" mkdir "%OUT_DIR%"
 
+rem Copy service scripts into build output so the unzipped package can be installed directly
+rem (logs.bat is not shipped: service.bat already provides "service.bat logs")
+echo     Copying service scripts into build output ...
+for %%F in (install.bat uninstall.bat service.bat) do (
+    copy /y "%~dp0%%F" "%SRC_FRAMEWORK%\" >nul
+    if errorlevel 1 (
+        echo Failed to copy %%F to %SRC_FRAMEWORK%
+        exit /b 1
+    )
+    copy /y "%~dp0%%F" "%SRC_STANDALONE%\" >nul
+    if errorlevel 1 (
+        echo Failed to copy %%F to %SRC_STANDALONE%
+        exit /b 1
+    )
+)
+
 echo     Packing framework (no runtime) ...
 powershell -NoProfile -Command "Compress-Archive -Force -Path '%SRC_FRAMEWORK%\*' -DestinationPath '%OUT_DIR%\WesPrint-framework-%VERSION%.zip'"
 if errorlevel 1 (
